@@ -33,42 +33,70 @@ func NewProductRepository(cfg ProductRepositoryCfg) domain.ProductRepository {
 	}
 }
 
-func (r *ProductRepository) FindAll(ctx context.Context, req domain.FindAllRequest) ([]entity.Product, error) {
+func (r *ProductRepository) FindAll(ctx context.Context, req domain.FindAllRequest) (domain.FindAllResult, error) {
 	log := common.NewRepoLogger(ctx, "ProductRepository.FindAll")
 
 	offset := (req.Page - 1) * req.Limit
 	orderClause := fmt.Sprintf("%s %s", req.SortBy.Column(), req.SortOrder.SQL())
 
-	query := r.readDB.WithContext(ctx).
-		Preload("Supplier").
-		Order(orderClause).
-		Limit(req.Limit).
-		Offset(offset)
-
+	baseQuery := r.readDB.WithContext(ctx).Model(&models.Product{})
 	if req.SupplierID > 0 {
-		query = query.Where("supplier_id = ?", req.SupplierID)
+		baseQuery = baseQuery.Where("supplier_id = ?", req.SupplierID)
+	}
+
+	var total int64
+	if err := baseQuery.Count(&total).Error; err != nil {
+		log.Error().Err(err).Msg("failed to count products")
+		return domain.FindAllResult{}, err
 	}
 
 	var result []models.Product
-	if err := query.Find(&result).Error; err != nil {
+	if err := baseQuery.Order(orderClause).Limit(req.Limit).Offset(offset).Find(&result).Error; err != nil {
 		log.Error().Err(err).Msg("failed to find all products")
-		return nil, err
+		return domain.FindAllResult{}, err
 	}
 
-	log.Debug().Int("count", len(result)).Msg("find all products")
-	return toProductEntities(result), nil
+	supplierMap, err := r.fetchSupplierMap(ctx, result)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to fetch suppliers")
+		return domain.FindAllResult{}, err
+	}
+
+	userMap, err := r.fetchUserMap(ctx, result)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to fetch users")
+		return domain.FindAllResult{}, err
+	}
+
+	log.Debug().Int("count", len(result)).Int64("total", total).Msg("find all products")
+	return domain.FindAllResult{
+		Items: toProductEntities(result, supplierMap, userMap),
+		Total: total,
+	}, nil
 }
 
 func (r *ProductRepository) FindByID(ctx context.Context, id uint) (*entity.Product, error) {
 	log := common.NewRepoLogger(ctx, "ProductRepository.FindByID")
 
 	var result models.Product
-	if err := r.readDB.WithContext(ctx).Preload("Supplier").First(&result, id).Error; err != nil {
+	if err := r.readDB.WithContext(ctx).First(&result, id).Error; err != nil {
 		log.Error().Err(err).Uint("id", id).Msg("failed to find product")
 		return nil, err
 	}
 
-	p := toProductEntity(result)
+	supplierMap, err := r.fetchSupplierMap(ctx, []models.Product{result})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to fetch supplier")
+		return nil, err
+	}
+
+	userMap, err := r.fetchUserMap(ctx, []models.Product{result})
+	if err != nil {
+		log.Error().Err(err).Msg("failed to fetch users")
+		return nil, err
+	}
+
+	p := toProductEntity(result, supplierMap, userMap)
 	return &p, nil
 }
 
@@ -81,7 +109,7 @@ func (r *ProductRepository) FindByName(ctx context.Context, name string) (*entit
 	}
 
 	log.Debug().Str("name", name).Msg("find by name")
-	p := toProductEntity(result)
+	p := toProductEntity(result, nil, nil)
 	return &p, nil
 }
 
@@ -111,46 +139,33 @@ func (r *ProductRepository) Update(ctx context.Context, p *entity.Product) error
 	return nil
 }
 
-func (r *ProductRepository) Delete(ctx context.Context, id uint) error {
-	log := common.NewRepoLogger(ctx, "ProductRepository.Delete")
+func (r *ProductRepository) SoftDelete(ctx context.Context, id uint) error {
+	log := common.NewRepoLogger(ctx, "ProductRepository.SoftDelete")
 
 	if err := r.writeDB.WithContext(ctx).Delete(&models.Product{}, id).Error; err != nil {
-		log.Error().Err(err).Uint("id", id).Msg("failed to delete product")
+		log.Error().Err(err).Uint("id", id).Msg("failed to soft delete product")
 		return err
 	}
 	return nil
 }
 
-func toProductEntity(m models.Product) entity.Product {
-	p := entity.Product{
-		ID:         m.ID,
-		Name:       m.Name,
-		Price:      m.Price,
-		Stock:      m.Stock,
-		SupplierID: m.SupplierID,
-		CreatedAt:  m.CreatedAt,
-		UpdatedAt:  m.UpdatedAt,
+func (r *ProductRepository) Delete(ctx context.Context, id uint) error {
+	log := common.NewRepoLogger(ctx, "ProductRepository.Delete")
+
+	if err := r.writeDB.WithContext(ctx).Unscoped().Delete(&models.Product{}, id).Error; err != nil {
+		log.Error().Err(err).Uint("id", id).Msg("failed to hard delete product")
+		return err
 	}
-	if m.Supplier != nil {
-		p.Supplier = &entity.Supplier{ID: m.Supplier.ID, Name: m.Supplier.Name}
-	}
-	return p
+	return nil
 }
 
-func toProductEntities(ms []models.Product) []entity.Product {
-	entities := make([]entity.Product, len(ms))
-	for i, m := range ms {
-		entities[i] = toProductEntity(m)
-	}
-	return entities
-}
-
-func toProductModel(p entity.Product) models.Product {
-	return models.Product{
-		ID:         p.ID,
-		Name:       p.Name,
-		Price:      p.Price,
-		Stock:      p.Stock,
-		SupplierID: p.SupplierID,
-	}
+func (r *ProductRepository) Transact(ctx context.Context, fn func(domain.ProductRepository) error) error {
+	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		txRepo := &ProductRepository{
+			readDB:  r.readDB,
+			writeDB: tx,
+			logger:  r.logger,
+		}
+		return fn(txRepo)
+	})
 }

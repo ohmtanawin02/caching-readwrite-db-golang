@@ -49,5 +49,5 @@ func (cfg NewProductRouterCfg) NewProductRouter() {
 	g.Get("/:id", handler.FindProductByID(handler.FindByIDHandlerCfg{ProductQuery: productQuery}))
 	g.Post("/", handler.CreateProduct(handler.CreateHandlerCfg{ProductCommand: productCommand, Validator: cfg.Validate}))
 	g.Put("/:id", handler.UpdateProduct(handler.UpdateHandlerCfg{ProductCommand: productCommand, Validator: cfg.Validate}))
-	g.Delete("/:id", handler.DeleteProduct(handler.DeleteHandlerCfg{ProductCommand: productCommand}))
+	g.Delete("/:id", handler.SoftDeleteProduct(handler.SoftDeleteHandlerCfg{ProductCommand: productCommand}))
 }

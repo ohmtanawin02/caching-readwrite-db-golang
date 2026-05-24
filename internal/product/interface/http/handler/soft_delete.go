@@ -13,21 +13,23 @@ import (
 	"golang-fiber/pkg/constants"
 )
 
-type DeleteHandlerCfg struct {
+type SoftDeleteHandlerCfg struct {
 	ProductCommand domain.ProductApplicationCommand
 }
 
-// DeleteProduct godoc
-// @Summary      Delete product
+// SoftDeleteProduct godoc
+// @Summary      Soft delete product
+// @Description  Set deleted_at — product จะไม่แสดงใน query ปกติ แต่ข้อมูลยังอยู่ใน DB
 // @Tags         products
 // @Accept       json
 // @Produce      json
 // @Param        id   path      int  true  "Product ID"
 // @Success      200  {object}  common.JSONResponse
 // @Failure      400  {object}  common.JSONResponse
+// @Failure      404  {object}  common.JSONResponse
 // @Failure      500  {object}  common.JSONResponse
 // @Router       /products/{id} [delete]
-func DeleteProduct(cfg DeleteHandlerCfg) fiber.Handler {
+func SoftDeleteProduct(cfg SoftDeleteHandlerCfg) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 		if err != nil {
@@ -35,7 +37,7 @@ func DeleteProduct(cfg DeleteHandlerCfg) fiber.Handler {
 				constants.CodeBadRequest, constants.MessageENBadRequest, constants.MessageTHBadRequest, nil)
 		}
 
-		if err := cfg.ProductCommand.Delete(c.UserContext(), uint(id)); err != nil {
+		if err := cfg.ProductCommand.SoftDelete(c.UserContext(), uint(id)); err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
 					constants.CodeNotFound, constants.MessageENNotFound, constants.MessageTHNotFound, nil)

@@ -23,6 +23,10 @@ type Config struct {
 	RedisAddr     string `split_words:"true" default:"localhost:6380"`
 	RedisPassword string `split_words:"true" default:""`
 	RedisDB       int    `split_words:"true" default:"0"`
+
+	// JWT
+	JWTSecret      string `split_words:"true" default:"change-me-in-production"`
+	JWTExpireHours int    `split_words:"true" default:"24"`
 }
 
 func Read() (*Config, error) {

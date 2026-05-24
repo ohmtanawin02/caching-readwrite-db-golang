@@ -23,4 +23,5 @@ type ProductApplicationCommand interface {
 	Create(context.Context, CreateProductInput) (*entity.Product, error)
 	Update(context.Context, uint, UpdateProductInput) (*entity.Product, error)
 	Delete(context.Context, uint) error
+	SoftDelete(context.Context, uint) error
 }

@@ -11,7 +11,7 @@ type FindAllRequest struct {
 	Page       int
 	Limit      int
 	SupplierID uint
-	SortBy     constants.ProductSortBy
+	SortBy     ProductSortBy
 	SortOrder  constants.SortOrder
 }
 

@@ -17,6 +17,10 @@ import (
 // @description     Product API with Read/Write DB Separation and Redis Cache-Aside Pattern
 // @host            localhost:9392
 // @BasePath        /api/v1
+// @securityDefinitions.apikey BearerAuth
+// @in              header
+// @name            Authorization
+// @description     JWT token format: "Bearer <token>"
 func main() {
 	cfg, err := config.Read()
 	if err != nil {

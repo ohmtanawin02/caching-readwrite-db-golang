@@ -1,10 +1,12 @@
 package handler
 
 import (
+	"errors"
 	"strconv"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	domain "golang-fiber/internal/product/domain"
 	"golang-fiber/internal/product/interface/http/dto"
@@ -36,8 +38,12 @@ func FindProductByID(cfg FindByIDHandlerCfg) fiber.Handler {
 
 		product, err := cfg.ProductQuery.FindByID(c.UserContext(), uint(id))
 		if err != nil {
-			return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
-				constants.CodeNotFound, constants.MessageENNotFound, constants.MessageTHNotFound, nil)
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
+					constants.CodeNotFound, constants.MessageENNotFound, constants.MessageTHNotFound, nil)
+			}
+			return common.ResponseJsonWithCode(c, fiber.StatusInternalServerError, uuid.New(),
+				constants.CodeInternalError, constants.MessageENSomethingWentWrong, constants.MessageTHSomethingWentWrong, nil)
 		}
 
 		return common.ResponseJsonWithCode(c, fiber.StatusOK, uuid.Nil,

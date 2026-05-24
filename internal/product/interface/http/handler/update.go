@@ -7,6 +7,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
+	"gorm.io/gorm"
 
 	domain "golang-fiber/internal/product/domain"
 	"golang-fiber/internal/product/application/commands"
@@ -52,6 +53,10 @@ func UpdateProduct(cfg UpdateHandlerCfg) fiber.Handler {
 			if errors.Is(err, commands.ErrDuplicateProductName) {
 				return common.ResponseJsonWithCode(c, fiber.StatusConflict, uuid.New(),
 					constants.CodeConflict, constants.MessageENConflict, constants.MessageTHConflict, nil)
+			}
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
+					constants.CodeNotFound, constants.MessageENNotFound, constants.MessageTHNotFound, nil)
 			}
 			return common.ResponseJsonWithCode(c, fiber.StatusInternalServerError, uuid.New(),
 				constants.CodeInternalError, constants.MessageENSomethingWentWrong, constants.MessageTHSomethingWentWrong, nil)

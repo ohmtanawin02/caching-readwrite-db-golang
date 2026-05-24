@@ -35,9 +35,9 @@ func ToFindAllDomainRequest(req *FindAllRequest) domain.FindAllRequest {
 		limit = 20
 	}
 
-	sortBy := constants.ProductSortBy(req.SortBy)
+	sortBy := domain.ProductSortBy(req.SortBy)
 	if !sortBy.IsValid() {
-		sortBy = constants.ProductSortByID
+		sortBy = domain.ProductSortByID
 	}
 
 	sortOrder := constants.SortOrder(req.SortOrder)

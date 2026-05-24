@@ -4,7 +4,7 @@
 
 - **Read/Write DB Separation** — Primary รับ write, Replica รับ read ผ่าน PostgreSQL Streaming Replication
 - **Redis Cache-Aside** — cache product list/detail ตัดรอบ DB queries สำหรับ read-heavy traffic
-- **Clean Architecture (DDD)** — แบ่ง 4 layer ชัดเจน Domain → Application → Infrastructure → Interface
+- **Clean Architecture (DDD)** — แบ่ง 4 layer Domain → Application → Infrastructure → Interface
 - **1M Seed Data** — suppliers 1,000 records + products 1,000,000 records (มีและไม่มี supplier relation ปนกัน)
 
 ---

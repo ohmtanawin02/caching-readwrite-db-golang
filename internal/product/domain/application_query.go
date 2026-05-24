@@ -7,6 +7,6 @@ import (
 )
 
 type ProductApplicationQuery interface {
-	FindAll(context.Context, FindAllRequest) ([]entity.Product, error)
+	FindAll(context.Context, FindAllRequest) (FindAllResult, error)
 	FindByID(context.Context, uint) (*entity.Product, error)
 }

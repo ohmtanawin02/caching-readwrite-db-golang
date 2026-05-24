@@ -21,12 +21,14 @@ type FindAllHandlerCfg struct {
 // @Tags         products
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        page        query  int    false  "Page number"          default(1)
 // @Param        limit       query  int    false  "Items per page"       default(20)
 // @Param        supplier_id query  int    false  "Filter by supplier"
 // @Param        sort_by     query  string false  "Sort field"           Enums(id,name,price,stock,created_at) default(id)
 // @Param        sort_order  query  string false  "Sort direction"       Enums(asc,desc) default(asc)
-// @Success      200  {object}  common.JSONResponse{data=[]dto.ProductResponse}
+// @Success      200  {object}  common.JSONResponse{data=dto.ProductListResponse}
+// @Failure      401  {object}  common.JSONResponse
 // @Failure      500  {object}  common.JSONResponse
 // @Router       /products [get]
 func FindAllProducts(cfg FindAllHandlerCfg) fiber.Handler {
@@ -37,13 +39,15 @@ func FindAllProducts(cfg FindAllHandlerCfg) fiber.Handler {
 				constants.CodeBadRequest, constants.MessageENBadRequest, constants.MessageTHBadRequest, nil)
 		}
 
-		products, err := cfg.ProductQuery.FindAll(c.UserContext(), dto.ToFindAllDomainRequest(req))
+		domainReq := dto.ToFindAllDomainRequest(req)
+		result, err := cfg.ProductQuery.FindAll(c.UserContext(), domainReq)
 		if err != nil {
 			return common.ResponseJsonWithCode(c, fiber.StatusInternalServerError, uuid.New(),
 				constants.CodeInternalError, constants.MessageENSomethingWentWrong, constants.MessageTHSomethingWentWrong, nil)
 		}
 
 		return common.ResponseJsonWithCode(c, fiber.StatusOK, uuid.Nil,
-			constants.CodeOK, constants.MessageENSuccess, constants.MessageTHSuccess, dto.ToProductResponses(products))
+			constants.CodeOK, constants.MessageENSuccess, constants.MessageTHSuccess,
+			dto.ToProductListResponse(result, domainReq))
 	}
 }

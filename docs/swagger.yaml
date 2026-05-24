@@ -1,0 +1,285 @@
+basePath: /api/v1
+definitions:
+  common.JSONResponse:
+    properties:
+      data: {}
+      error_id:
+        type: string
+      message:
+        $ref: '#/definitions/common.message'
+      status:
+        type: integer
+    type: object
+  common.message:
+    properties:
+      code:
+        type: string
+      en:
+        type: string
+      th:
+        type: string
+    type: object
+  dto.CreateProductRequest:
+    properties:
+      name:
+        type: string
+      price:
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+      supplier_id:
+        type: integer
+    required:
+    - name
+    - price
+    type: object
+  dto.ProductResponse:
+    properties:
+      created_at:
+        type: string
+      id:
+        type: integer
+      name:
+        type: string
+      price:
+        type: number
+      stock:
+        type: integer
+      supplier:
+        $ref: '#/definitions/dto.SupplierResponse'
+      supplier_id:
+        type: integer
+      updated_at:
+        type: string
+    type: object
+  dto.SupplierResponse:
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+    type: object
+  dto.UpdateProductRequest:
+    properties:
+      name:
+        type: string
+      price:
+        type: number
+      stock:
+        minimum: 0
+        type: integer
+    required:
+    - name
+    - price
+    type: object
+host: localhost:9392
+info:
+  contact: {}
+  description: Product API with Read/Write DB Separation and Redis Cache-Aside Pattern
+  title: Product API
+  version: "1.0"
+paths:
+  /products:
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - default: 1
+        description: Page number
+        in: query
+        name: page
+        type: integer
+      - default: 20
+        description: Items per page
+        in: query
+        name: limit
+        type: integer
+      - description: Filter by supplier
+        in: query
+        name: supplier_id
+        type: integer
+      - default: id
+        description: Sort field
+        enum:
+        - id
+        - name
+        - price
+        - stock
+        - created_at
+        in: query
+        name: sort_by
+        type: string
+      - default: asc
+        description: Sort direction
+        enum:
+        - asc
+        - desc
+        in: query
+        name: sort_order
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.JSONResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.ProductResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+      summary: List products
+      tags:
+      - products
+    post:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProductResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+      summary: Create product
+      tags:
+      - products
+  /products/{id}:
+    delete:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+      summary: Delete product
+      tags:
+      - products
+    get:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProductResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+      summary: Get product by ID
+      tags:
+      - products
+    put:
+      consumes:
+      - application/json
+      parameters:
+      - description: Product ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Product data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateProductRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/common.JSONResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ProductResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/common.JSONResponse'
+      summary: Update product
+      tags:
+      - products
+swagger: "2.0"

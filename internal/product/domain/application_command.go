@@ -1,0 +1,26 @@
+package domain
+
+import (
+	"context"
+
+	"golang-fiber/internal/product/domain/entity"
+)
+
+type CreateProductInput struct {
+	Name       string
+	Price      float64
+	Stock      int
+	SupplierID *uint
+}
+
+type UpdateProductInput struct {
+	Name  string
+	Price float64
+	Stock int
+}
+
+type ProductApplicationCommand interface {
+	Create(context.Context, CreateProductInput) (*entity.Product, error)
+	Update(context.Context, uint, UpdateProductInput) (*entity.Product, error)
+	Delete(context.Context, uint) error
+}

@@ -1,0 +1,103 @@
+services:
+
+  # ==========================================
+  # PostgreSQL PRIMARY — Write DB (port 9191)
+  # รับ INSERT / UPDATE / DELETE จาก app
+  # ==========================================
+  postgres-primary:
+    image: bitnami/postgresql:latest     # bitnami image รองรับ replication config ผ่าน env ได้เลย ไม่ต้องแก้ conf เอง
+    container_name: product_postgres_primary
+    restart: unless-stopped              # restart อัตโนมัติ ยกเว้นกรณี stop ด้วยมือ
+
+    environment:
+      POSTGRESQL_USERNAME: postgres      # user หลักของ database
+      POSTGRESQL_PASSWORD: postgres      # password ของ user หลัก
+      POSTGRESQL_DATABASE: product_db   # database ที่จะสร้างอัตโนมัติตอน start
+
+      POSTGRESQL_REPLICATION_MODE: master        # บอกว่า container นี้คือ Primary (master)
+      POSTGRESQL_REPLICATION_USER: replicator    # user สำหรับ replica ใช้ดึง WAL log
+      POSTGRESQL_REPLICATION_PASSWORD: replicator123  # password ของ replication user
+
+    ports:
+      - "9191:5432"   # เปิด port 9191 บน host → map เข้า port 5432 ใน container (Write DB)
+
+    volumes:
+      - postgres_primary_data:/bitnami/postgresql          # เก็บ data ถาวรใน docker volume
+      - ./migrations/schema:/docker-entrypoint-initdb.d    # SQL ใน folder นี้จะ run อัตโนมัติตอน container สร้างครั้งแรก
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d product_db"]  # เช็คว่า postgres พร้อมรับ connection
+      interval: 5s    # เช็คทุก 5 วินาที
+      timeout: 5s     # รอผล max 5 วินาที
+      retries: 10     # ลองซ้ำ 10 ครั้ง ก่อน mark ว่า unhealthy
+
+  # ==========================================
+  # PostgreSQL REPLICA — Read DB (port 9192)
+  # รับ SELECT จาก app (read-only)
+  # sync ข้อมูลจาก primary แบบ real-time ผ่าน WAL streaming
+  # ==========================================
+  postgres-replica:
+    image: bitnami/postgresql:latest
+    container_name: product_postgres_replica
+    restart: unless-stopped
+
+    depends_on:
+      postgres-primary:
+        condition: service_healthy   # รอ primary healthy ก่อน แล้วค่อย start replica
+
+    environment:
+      POSTGRESQL_USERNAME: postgres
+      POSTGRESQL_PASSWORD: postgres
+      POSTGRESQL_DATABASE: product_db
+
+      POSTGRESQL_REPLICATION_MODE: slave              # บอกว่า container นี้คือ Replica (slave)
+      POSTGRESQL_REPLICATION_USER: replicator         # user เดียวกับที่ primary ตั้งไว้
+      POSTGRESQL_REPLICATION_PASSWORD: replicator123
+      POSTGRESQL_MASTER_HOST: postgres-primary        # ชื่อ service ของ primary (docker network resolve ได้เลย)
+      POSTGRESQL_MASTER_PORT_NUMBER: 5432             # port ของ primary ใน docker network (ไม่ใช่ host port)
+
+    ports:
+      - "9192:5432"   # เปิด port 9192 บน host → map เข้า port 5432 ใน container (Read DB)
+
+    volumes:
+      - postgres_replica_data:/bitnami/postgresql   # replica มี volume แยก ไม่แชร์กับ primary
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d product_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ==========================================
+  # Redis — Cache (port 6380)
+  # ใช้ cache product list / detail
+  # ==========================================
+  redis:
+    image: redis:7-alpine               # alpine = image เล็ก เหมาะ dev
+    container_name: product_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning
+    # --save 60 1 = snapshot ลง disk ทุก 60 วิ ถ้ามีการเปลี่ยนแปลง >= 1 key
+    # --loglevel warning = log เฉพาะ warning ขึ้นไป ไม่ verbose
+
+    ports:
+      - "6380:6379"   # เปิด port 6380 บน host → map เข้า port 6379 ใน container
+
+    volumes:
+      - redis_data:/data   # เก็บ snapshot ถาวร
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]   # redis-cli ping ต้องได้ PONG
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+# ==========================================
+# Named Volumes — เก็บ data ถาวรบน host
+# แม้ container ถูก rm ข้อมูลยังอยู่
+# docker volume rm ถึงจะลบได้
+# ==========================================
+volumes:
+  postgres_primary_data:   # data directory ของ primary
+  postgres_replica_data:   # data directory ของ replica
+  redis_data:              # snapshot ของ redis

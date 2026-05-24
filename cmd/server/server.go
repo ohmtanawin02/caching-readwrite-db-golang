@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"os"
+	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/contrib/fiberzerolog"
@@ -16,8 +17,10 @@ import (
 	"golang-fiber/config"
 	_ "golang-fiber/docs"
 	productRouter "golang-fiber/internal/product/interface/http"
+	userRouter "golang-fiber/internal/user/interface/http"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
+	"golang-fiber/pkg/middleware"
 )
 
 func NewServer(cfg *config.Config) *fiber.App {
@@ -63,7 +66,6 @@ func NewServer(cfg *config.Config) *fiber.App {
 
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
-	// Health check
 	app.Get("/health", func(c *fiber.Ctx) error {
 		sqlDB, _ := readDB.DB()
 		if err := sqlDB.Ping(); err != nil {
@@ -80,9 +82,23 @@ func NewServer(cfg *config.Config) *fiber.App {
 	})
 
 	validate := validator.New()
+	jwtTTL := time.Duration(cfg.JWTExpireHours) * time.Hour
 
-	// Routes
 	api := app.Group("/api/v1")
+
+	// Public routes — auth (ไม่ต้องมี JWT)
+	userRouter.NewUserRouterCfg{
+		App:       api,
+		ReadDB:    readDB,
+		WriteDB:   writeDB,
+		Logger:    logger,
+		Validate:  validate,
+		JWTSecret: cfg.JWTSecret,
+		JWTTTL:    jwtTTL,
+	}.NewUserRouter()
+
+	// Protected routes — ต้องมี JWT
+	api.Use(middleware.JWTProtected(cfg.JWTSecret))
 
 	productRouter.NewProductRouterCfg{
 		App:      api,
@@ -93,7 +109,6 @@ func NewServer(cfg *config.Config) *fiber.App {
 		Validate: validate,
 	}.NewProductRouter()
 
-	// 404
 	app.Use(func(c *fiber.Ctx) error {
 		return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
 			constants.CodeNotFound,

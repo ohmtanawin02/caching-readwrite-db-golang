@@ -66,3 +66,6 @@ flow-crud.md
 main
 
 git-commit-guide.md
+# Air
+tmp/
+build-errors.log

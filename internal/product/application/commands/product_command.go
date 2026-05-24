@@ -8,8 +8,10 @@ import (
 
 	domain "golang-fiber/internal/product/domain"
 	"golang-fiber/internal/product/domain/entity"
+	"golang-fiber/pkg/auth"
 	"golang-fiber/pkg/cache"
 	"golang-fiber/pkg/common"
+	"golang-fiber/pkg/constants"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -48,6 +50,12 @@ func (c *ProductCommand) Create(ctx context.Context, input domain.CreateProductI
 		Price:      input.Price,
 		Stock:      input.Stock,
 		SupplierID: input.SupplierID,
+		Status:     constants.ProductStatusActive,
+	}
+
+	if userID, ok := auth.GetUserID(ctx); ok {
+		product.CreatedByUserID = &userID
+		product.UpdatedByUserID = &userID
 	}
 
 	if err := c.repo.Create(ctx, product); err != nil {
@@ -55,7 +63,9 @@ func (c *ProductCommand) Create(ctx context.Context, input domain.CreateProductI
 	}
 
 	go c.invalidateCache(log, "products:list:*")
-	return product, nil
+
+	// fetch fresh — ได้ supplier + created_by/updated_by user ครบ
+	return c.repo.FindByID(ctx, product.ID)
 }
 
 func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.UpdateProductInput) (*entity.Product, error) {
@@ -76,6 +86,10 @@ func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.Updat
 	product.Price = input.Price
 	product.Stock = input.Stock
 
+	if userID, ok := auth.GetUserID(ctx); ok {
+		product.UpdatedByUserID = &userID
+	}
+
 	if err := c.repo.Update(ctx, product); err != nil {
 		return nil, err
 	}
@@ -84,7 +98,27 @@ func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.Updat
 		fmt.Sprintf("products:detail:%d", id),
 		"products:list:*",
 	)
-	return product, nil
+
+	// fetch fresh — ได้ supplier + created_by/updated_by user ครบ
+	return c.repo.FindByID(ctx, id)
+}
+
+func (c *ProductCommand) SoftDelete(ctx context.Context, id uint) error {
+	log := common.NewAppLogger(ctx, "ProductCommand.SoftDelete")
+
+	if _, err := c.repo.FindByID(ctx, id); err != nil {
+		return err
+	}
+
+	if err := c.repo.SoftDelete(ctx, id); err != nil {
+		return err
+	}
+
+	go c.invalidateCache(log,
+		fmt.Sprintf("products:detail:%d", id),
+		"products:list:*",
+	)
+	return nil
 }
 
 func (c *ProductCommand) Delete(ctx context.Context, id uint) error {

@@ -35,11 +35,11 @@ func cacheKeyList(req domain.FindAllRequest) string {
 		req.SupplierID, req.Page, req.Limit, req.SortBy, req.SortOrder)
 }
 
-func (q *ProductQuery) FindAll(ctx context.Context, req domain.FindAllRequest) ([]entity.Product, error) {
+func (q *ProductQuery) FindAll(ctx context.Context, req domain.FindAllRequest) (domain.FindAllResult, error) {
 	log := common.NewAppLogger(ctx, "ProductQuery.FindAll")
 	key := cacheKeyList(req)
 
-	var cached []entity.Product
+	var cached domain.FindAllResult
 	if err := q.cache.Get(ctx, key, &cached); err == nil {
 		log.Debug().Str("key", key).Msg("cache hit")
 		return cached, nil
@@ -48,18 +48,18 @@ func (q *ProductQuery) FindAll(ctx context.Context, req domain.FindAllRequest) (
 	}
 
 	log.Debug().Str("key", key).Msg("cache miss")
-	products, err := q.repo.FindAll(ctx, req)
+	result, err := q.repo.FindAll(ctx, req)
 	if err != nil {
-		return nil, err
+		return domain.FindAllResult{}, err
 	}
 
 	go func() {
-		if err := q.cache.Set(context.Background(), key, products, cache.DefaultTTL); err != nil {
+		if err := q.cache.Set(context.Background(), key, result, cache.DefaultTTL); err != nil {
 			log.Warn().Err(err).Msg("failed to set cache")
 		}
 	}()
 
-	return products, nil
+	return result, nil
 }
 
 func (q *ProductQuery) FindByID(ctx context.Context, id uint) (*entity.Product, error) {
@@ -70,6 +70,8 @@ func (q *ProductQuery) FindByID(ctx context.Context, id uint) (*entity.Product, 
 	if err := q.cache.Get(ctx, key, &cached); err == nil {
 		log.Debug().Str("key", key).Msg("cache hit")
 		return &cached, nil
+	} else if !errors.Is(err, redis.Nil) {
+		log.Warn().Err(err).Msg("redis error, fallthrough to db")
 	}
 
 	product, err := q.repo.FindByID(ctx, id)

@@ -67,10 +67,16 @@ func NewServer(cfg *config.Config) *fiber.App {
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
-		sqlDB, _ := readDB.DB()
-		if err := sqlDB.Ping(); err != nil {
+		readSQLDB, _ := readDB.DB()
+		if err := readSQLDB.Ping(); err != nil {
 			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"status": "unhealthy", "db": err.Error(),
+				"status": "unhealthy", "read_db": err.Error(),
+			})
+		}
+		writeSQLDB, _ := writeDB.DB()
+		if err := writeSQLDB.Ping(); err != nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"status": "unhealthy", "write_db": err.Error(),
 			})
 		}
 		if err := rdb.Ping(c.UserContext()).Err(); err != nil {

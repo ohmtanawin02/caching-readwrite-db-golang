@@ -158,14 +158,3 @@ func (r *ProductRepository) Delete(ctx context.Context, id uint) error {
 	}
 	return nil
 }
-
-func (r *ProductRepository) Transact(ctx context.Context, fn func(domain.ProductRepository) error) error {
-	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		txRepo := &ProductRepository{
-			readDB:  r.readDB,
-			writeDB: tx,
-			logger:  r.logger,
-		}
-		return fn(txRepo)
-	})
-}

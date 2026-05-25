@@ -79,8 +79,9 @@ func (q *ProductQuery) FindByID(ctx context.Context, id uint) (*entity.Product, 
 		return nil, err
 	}
 
+	snapshot := *product
 	go func() {
-		if err := q.cache.Set(context.Background(), key, product, cache.DefaultTTL); err != nil {
+		if err := q.cache.Set(context.Background(), key, snapshot, cache.DefaultTTL); err != nil {
 			log.Warn().Err(err).Msg("failed to set cache")
 		}
 	}()

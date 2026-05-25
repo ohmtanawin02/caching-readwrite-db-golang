@@ -12,6 +12,7 @@ import (
 	"golang-fiber/pkg/cache"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
+	"golang-fiber/pkg/database"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -39,7 +40,7 @@ func NewProductCommand(cfg ProductCommandCfg) domain.ProductApplicationCommand {
 func (c *ProductCommand) Create(ctx context.Context, input domain.CreateProductInput) (*entity.Product, error) {
 	log := common.NewAppLogger(ctx, "ProductCommand.Create")
 
-	if _, err := c.repo.FindByName(ctx, input.Name); err == nil {
+	if _, err := c.repo.FindByName(database.WithPrimary(ctx), input.Name); err == nil {
 		return nil, ErrDuplicateProductName
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -65,7 +66,7 @@ func (c *ProductCommand) Create(ctx context.Context, input domain.CreateProductI
 	go c.invalidateCache(log, "products:list:*")
 
 	// fetch fresh — ได้ supplier + created_by/updated_by user ครบ
-	return c.repo.FindByID(ctx, product.ID)
+	return c.repo.FindByID(database.WithPrimary(ctx), product.ID)
 }
 
 func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.UpdateProductInput) (*entity.Product, error) {
@@ -76,7 +77,7 @@ func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.Updat
 		return nil, err
 	}
 
-	if existing, err := c.repo.FindByName(ctx, input.Name); err == nil && existing.ID != id {
+	if existing, err := c.repo.FindByName(database.WithPrimary(ctx), input.Name); err == nil && existing.ID != id {
 		return nil, ErrDuplicateProductName
 	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -101,7 +102,7 @@ func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.Updat
 	)
 
 	// fetch fresh — ได้ supplier + created_by/updated_by user ครบ
-	return c.repo.FindByID(ctx, id)
+	return c.repo.FindByID(database.WithPrimary(ctx), id)
 }
 
 func (c *ProductCommand) SoftDelete(ctx context.Context, id uint) error {

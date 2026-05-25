@@ -58,7 +58,7 @@ report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 db
 db2
 rabbitmq_data
-database
+
 
 CLAUDE.md
 flow-crud.md

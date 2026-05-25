@@ -8,28 +8,28 @@ import (
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 
-	domain "golang-fiber/internal/product/domain"
+	domain "golang-fiber/internal/supplier/domain"
+	"golang-fiber/internal/supplier/interface/http/dto"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
 )
 
-type DeleteHandlerCfg struct {
-	ProductCommand domain.ProductApplicationCommand
+type FindByIDHandlerCfg struct {
+	SupplierQuery domain.SupplierApplicationQuery
 }
 
-// DeleteProduct godoc
-// @Summary      Hard delete product
-// @Tags         products
+// FindSupplierByID godoc
+// @Summary      Get supplier by ID
+// @Tags         suppliers
 // @Accept       json
 // @Produce      json
 // @Security     BearerAuth
-// @Param        id   path      int  true  "Product ID"
-// @Success      200  {object}  common.JSONResponse
+// @Param        id   path      int  true  "Supplier ID"
+// @Success      200  {object}  common.JSONResponse{data=internal_supplier_interface_http_dto.SupplierResponse}
 // @Failure      400  {object}  common.JSONResponse
 // @Failure      404  {object}  common.JSONResponse
-// @Failure      500  {object}  common.JSONResponse
-// @Router       /products/{id}/hard [delete]
-func DeleteProduct(cfg DeleteHandlerCfg) fiber.Handler {
+// @Router       /suppliers/{id} [get]
+func FindSupplierByID(cfg FindByIDHandlerCfg) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		id, err := strconv.ParseUint(c.Params("id"), 10, 64)
 		if err != nil {
@@ -37,7 +37,8 @@ func DeleteProduct(cfg DeleteHandlerCfg) fiber.Handler {
 				constants.CodeBadRequest, constants.MessageENBadRequest, constants.MessageTHBadRequest, nil)
 		}
 
-		if err := cfg.ProductCommand.Delete(c.UserContext(), uint(id)); err != nil {
+		supplier, err := cfg.SupplierQuery.FindByID(c.UserContext(), uint(id))
+		if err != nil {
 			if errors.Is(err, gorm.ErrRecordNotFound) {
 				return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),
 					constants.CodeNotFound, constants.MessageENNotFound, constants.MessageTHNotFound, nil)
@@ -47,6 +48,6 @@ func DeleteProduct(cfg DeleteHandlerCfg) fiber.Handler {
 		}
 
 		return common.ResponseJsonWithCode(c, fiber.StatusOK, uuid.Nil,
-			constants.CodeOK, constants.MessageENSuccess, constants.MessageTHSuccess, nil)
+			constants.CodeOK, constants.MessageENSuccess, constants.MessageTHSuccess, dto.ToSupplierResponse(*supplier))
 	}
 }

@@ -14,12 +14,11 @@ import (
 func JWTProtected(jwtSecret string) fiber.Handler {
 	return func(c *fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
-		if !strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenStr == "" {
 			return common.ResponseJsonWithCode(c, fiber.StatusUnauthorized, uuid.New(),
 				constants.CodeUnauthorized, constants.MessageENUnauthorized, constants.MessageTHUnauthorized, nil)
 		}
-
-		tokenStr := strings.TrimPrefix(authHeader, "Bearer ")
 		claims, err := auth.ValidateToken(tokenStr, jwtSecret)
 		if err != nil {
 			return common.ResponseJsonWithCode(c, fiber.StatusUnauthorized, uuid.New(),

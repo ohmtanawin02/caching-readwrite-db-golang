@@ -17,6 +17,7 @@ import (
 	"golang-fiber/config"
 	_ "golang-fiber/docs"
 	productRouter "golang-fiber/internal/product/interface/http"
+	supplierRouter "golang-fiber/internal/supplier/interface/http"
 	userRouter "golang-fiber/internal/user/interface/http"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
@@ -114,6 +115,15 @@ func NewServer(cfg *config.Config) *fiber.App {
 		Logger:   logger,
 		Validate: validate,
 	}.NewProductRouter()
+
+	supplierRouter.NewSupplierRouterCfg{
+		App:      api,
+		ReadDB:   readDB,
+		WriteDB:  writeDB,
+		Redis:    rdb,
+		Logger:   logger,
+		Validate: validate,
+	}.NewSupplierRouter()
 
 	app.Use(func(c *fiber.Ctx) error {
 		return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),

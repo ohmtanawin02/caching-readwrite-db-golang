@@ -7,6 +7,7 @@ import (
 	"golang-fiber/internal/user/domain/entity"
 	"golang-fiber/internal/user/infrastructure/repository/models"
 	"golang-fiber/pkg/common"
+	"golang-fiber/pkg/database"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -35,8 +36,13 @@ func NewUserRepository(cfg UserRepositoryCfg) domain.UserRepository {
 func (r *UserRepository) FindByID(ctx context.Context, id uint) (*entity.User, error) {
 	log := common.NewRepoLogger(ctx, "UserRepository.FindByID")
 
+	db := r.readDB
+	if database.UsePrimary(ctx) {
+		db = r.writeDB
+	}
+
 	var m models.User
-	if err := r.readDB.WithContext(ctx).First(&m, id).Error; err != nil {
+	if err := db.WithContext(ctx).First(&m, id).Error; err != nil {
 		log.Error().Err(err).Uint("id", id).Msg("failed to find user by id")
 		return nil, err
 	}
@@ -45,8 +51,13 @@ func (r *UserRepository) FindByID(ctx context.Context, id uint) (*entity.User, e
 }
 
 func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*entity.User, error) {
+	db := r.readDB
+	if database.UsePrimary(ctx) {
+		db = r.writeDB
+	}
+
 	var m models.User
-	if err := r.readDB.WithContext(ctx).Where("username = ?", username).First(&m).Error; err != nil {
+	if err := db.WithContext(ctx).Where("username = ?", username).First(&m).Error; err != nil {
 		return nil, err
 	}
 	u := toUserEntity(m)
@@ -54,8 +65,13 @@ func (r *UserRepository) FindByUsername(ctx context.Context, username string) (*
 }
 
 func (r *UserRepository) FindByEmail(ctx context.Context, email string) (*entity.User, error) {
+	db := r.readDB
+	if database.UsePrimary(ctx) {
+		db = r.writeDB
+	}
+
 	var m models.User
-	if err := r.readDB.WithContext(ctx).Where("email = ?", email).First(&m).Error; err != nil {
+	if err := db.WithContext(ctx).Where("email = ?", email).First(&m).Error; err != nil {
 		return nil, err
 	}
 	u := toUserEntity(m)

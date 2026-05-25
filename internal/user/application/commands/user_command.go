@@ -8,6 +8,7 @@ import (
 	domain "golang-fiber/internal/user/domain"
 	"golang-fiber/internal/user/domain/entity"
 	"golang-fiber/pkg/auth"
+	"golang-fiber/pkg/database"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
@@ -34,15 +35,17 @@ func NewUserCommand(cfg UserCommandCfg) domain.UserApplicationCommand {
 }
 
 func (c *UserCommand) Register(ctx context.Context, input domain.RegisterInput) (*entity.User, error) {
+	pCtx := database.WithPrimary(ctx)
+
 	// validate username unique (application layer)
-	if _, err := c.repo.FindByUsername(ctx, input.Username); err == nil {
+	if _, err := c.repo.FindByUsername(pCtx, input.Username); err == nil {
 		return nil, domain.ErrDuplicateUsername
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
 	// validate email unique (application layer)
-	if _, err := c.repo.FindByEmail(ctx, input.Email); err == nil {
+	if _, err := c.repo.FindByEmail(pCtx, input.Email); err == nil {
 		return nil, domain.ErrDuplicateEmail
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err

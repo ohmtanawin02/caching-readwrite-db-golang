@@ -23,9 +23,11 @@ type FindByIDHandlerCfg struct {
 // @Tags         products
 // @Accept       json
 // @Produce      json
+// @Security     BearerAuth
 // @Param        id   path      int  true  "Product ID"
 // @Success      200  {object}  common.JSONResponse{data=dto.ProductResponse}
 // @Failure      400  {object}  common.JSONResponse
+// @Failure      401  {object}  common.JSONResponse
 // @Failure      404  {object}  common.JSONResponse
 // @Router       /products/{id} [get]
 func FindProductByID(cfg FindByIDHandlerCfg) fiber.Handler {

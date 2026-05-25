@@ -8,44 +8,43 @@ import (
 	domain "golang-fiber/internal/user/domain"
 	"golang-fiber/internal/user/domain/entity"
 	"golang-fiber/pkg/auth"
-	"golang-fiber/pkg/database"
 
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 type UserCommand struct {
-	repo      domain.UserRepository
+	queryRepo domain.UserQueryRepository
+	cmdRepo   domain.UserCommandRepository
 	jwtSecret string
 	jwtTTL    time.Duration
 }
 
 type UserCommandCfg struct {
-	Repo      domain.UserRepository
+	QueryRepo domain.UserQueryRepository
+	CmdRepo   domain.UserCommandRepository
 	JWTSecret string
 	JWTTTL    time.Duration
 }
 
 func NewUserCommand(cfg UserCommandCfg) domain.UserApplicationCommand {
 	return &UserCommand{
-		repo:      cfg.Repo,
+		queryRepo: cfg.QueryRepo,
+		cmdRepo:   cfg.CmdRepo,
 		jwtSecret: cfg.JWTSecret,
 		jwtTTL:    cfg.JWTTTL,
 	}
 }
 
 func (c *UserCommand) Register(ctx context.Context, input domain.RegisterInput) (*entity.User, error) {
-	pCtx := database.WithPrimary(ctx)
-
-	// validate username unique (application layer)
-	if _, err := c.repo.FindByUsername(pCtx, input.Username); err == nil {
+	// duplicate checks go to writeDB (via cmdRepo) to avoid replication lag
+	if _, err := c.cmdRepo.FindByUsername(ctx, input.Username); err == nil {
 		return nil, domain.ErrDuplicateUsername
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
 	}
 
-	// validate email unique (application layer)
-	if _, err := c.repo.FindByEmail(pCtx, input.Email); err == nil {
+	if _, err := c.cmdRepo.FindByEmail(ctx, input.Email); err == nil {
 		return nil, domain.ErrDuplicateEmail
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -65,7 +64,7 @@ func (c *UserCommand) Register(ctx context.Context, input domain.RegisterInput) 
 		Phone:     input.Phone,
 	}
 
-	if err := c.repo.Create(ctx, user); err != nil {
+	if err := c.cmdRepo.Create(ctx, user); err != nil {
 		return nil, err
 	}
 
@@ -74,7 +73,7 @@ func (c *UserCommand) Register(ctx context.Context, input domain.RegisterInput) 
 }
 
 func (c *UserCommand) Login(ctx context.Context, input domain.LoginInput) (*domain.LoginResult, error) {
-	user, err := c.repo.FindByUsername(ctx, input.Username)
+	user, err := c.queryRepo.FindByUsername(ctx, input.Username)
 	if err != nil {
 		return nil, domain.ErrInvalidCredentials
 	}

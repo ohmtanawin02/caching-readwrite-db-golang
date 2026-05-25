@@ -8,6 +8,8 @@ import (
 	supplierEntity "golang-fiber/internal/supplier/domain/entity"
 	userEntity "golang-fiber/internal/user/domain/entity"
 	"golang-fiber/pkg/constants"
+
+	"gorm.io/gorm"
 )
 
 // supplierRow — local scan struct (ไม่ import supplier infrastructure)
@@ -27,7 +29,7 @@ type userRow struct {
 	Phone     string
 }
 
-func (r *ProductRepository) fetchSupplierMap(ctx context.Context, products []models.Product) (map[uint]supplierRow, error) {
+func fetchSupplierMap(ctx context.Context, db *gorm.DB, products []models.Product) (map[uint]supplierRow, error) {
 	idSet := make(map[uint]struct{})
 	for _, p := range products {
 		if p.SupplierID != nil {
@@ -44,7 +46,7 @@ func (r *ProductRepository) fetchSupplierMap(ctx context.Context, products []mod
 	}
 
 	var rows []supplierRow
-	if err := r.readDB.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Table("suppliers").
 		Select("id, name, status").
 		Where("id IN ? AND deleted_at IS NULL", ids).
@@ -59,7 +61,7 @@ func (r *ProductRepository) fetchSupplierMap(ctx context.Context, products []mod
 	return m, nil
 }
 
-func (r *ProductRepository) fetchUserMap(ctx context.Context, products []models.Product) (map[uint]userRow, error) {
+func fetchUserMap(ctx context.Context, db *gorm.DB, products []models.Product) (map[uint]userRow, error) {
 	idSet := make(map[uint]struct{})
 	for _, p := range products {
 		if p.CreatedByUserID != nil {
@@ -79,7 +81,7 @@ func (r *ProductRepository) fetchUserMap(ctx context.Context, products []models.
 	}
 
 	var rows []userRow
-	if err := r.readDB.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Table("users").
 		Select("id, username, firstname, lastname, email, phone").
 		Where("id IN ? AND deleted_at IS NULL", ids).

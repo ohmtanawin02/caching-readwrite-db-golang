@@ -24,22 +24,24 @@ type NewProductRouterCfg struct {
 }
 
 func (cfg NewProductRouterCfg) NewProductRouter() {
-	// repository
-	repo := repository.NewProductRepository(repository.ProductRepositoryCfg{
-		ReadDB:  cfg.ReadDB,
-		WriteDB: cfg.WriteDB,
-		Logger:  cfg.Logger,
+	queryRepo := repository.NewProductQueryRepository(repository.ProductQueryRepositoryCfg{
+		DB:     cfg.ReadDB,
+		Logger: cfg.Logger,
+	})
+	cmdRepo := repository.NewProductCommandRepository(repository.ProductCommandRepositoryCfg{
+		DB:     cfg.WriteDB,
+		Logger: cfg.Logger,
 	})
 
 	redisCache := cache.NewRedisCache(cfg.Redis)
 
 	// use cases
 	productQuery := queries.NewProductQuery(queries.ProductQueryCfg{
-		Repo:  repo,
+		Repo:  queryRepo,
 		Cache: redisCache,
 	})
 	productCommand := commands.NewProductCommand(commands.ProductCommandCfg{
-		Repo:  repo,
+		Repo:  cmdRepo,
 		Cache: redisCache,
 	})
 

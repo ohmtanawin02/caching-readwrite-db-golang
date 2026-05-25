@@ -7,6 +7,8 @@ import (
 	"golang-fiber/internal/supplier/infrastructure/repository/models"
 	userEntity "golang-fiber/internal/user/domain/entity"
 	"golang-fiber/pkg/constants"
+
+	"gorm.io/gorm"
 )
 
 type userRow struct {
@@ -18,7 +20,7 @@ type userRow struct {
 	Phone     string
 }
 
-func (r *SupplierRepository) fetchUserMap(ctx context.Context, suppliers []models.Supplier) (map[uint]userRow, error) {
+func fetchUserMap(ctx context.Context, db *gorm.DB, suppliers []models.Supplier) (map[uint]userRow, error) {
 	idSet := make(map[uint]struct{})
 	for _, p := range suppliers {
 		if p.CreatedByUserID != nil {
@@ -38,7 +40,7 @@ func (r *SupplierRepository) fetchUserMap(ctx context.Context, suppliers []model
 	}
 
 	var rows []userRow
-	if err := r.readDB.WithContext(ctx).
+	if err := db.WithContext(ctx).
 		Table("users").
 		Select("id, username, firstname, lastname, email, phone").
 		Where("id IN ? AND deleted_at IS NULL", ids).

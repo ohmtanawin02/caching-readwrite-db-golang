@@ -24,21 +24,24 @@ type NewSupplierRouterCfg struct {
 }
 
 func (cfg NewSupplierRouterCfg) NewSupplierRouter() {
-	repo := repository.NewSupplierRepository(repository.SupplierRepositoryCfg{
-		ReadDB:  cfg.ReadDB,
-		WriteDB: cfg.WriteDB,
-		Logger:  cfg.Logger,
+	queryRepo := repository.NewSupplierQueryRepository(repository.SupplierQueryRepositoryCfg{
+		DB:     cfg.ReadDB,
+		Logger: cfg.Logger,
+	})
+	cmdRepo := repository.NewSupplierCommandRepository(repository.SupplierCommandRepositoryCfg{
+		DB:     cfg.WriteDB,
+		Logger: cfg.Logger,
 	})
 
 	redisCache := cache.NewRedisCache(cfg.Redis)
 
 	// use cases
 	supplierQuery := queries.NewSupplierQuery(queries.SupplierQueryCfg{
-		Repo:  repo,
+		Repo:  queryRepo,
 		Cache: redisCache,
 	})
 	supplierCommand := commands.NewSupplierCommand(commands.SupplierCommandCfg{
-		Repo:  repo,
+		Repo:  cmdRepo,
 		Cache: redisCache,
 	})
 

@@ -20,8 +20,12 @@ type FindAllResult struct {
 	Total int64
 }
 
-type ProductRepository interface {
+type ProductQueryRepository interface {
 	FindAll(context.Context, FindAllRequest) (FindAllResult, error)
+	FindByID(context.Context, uint) (*entity.Product, error)
+}
+
+type ProductCommandRepository interface {
 	FindByID(context.Context, uint) (*entity.Product, error)
 	FindByName(context.Context, string) (*entity.Product, error)
 	Create(context.Context, *entity.Product) error

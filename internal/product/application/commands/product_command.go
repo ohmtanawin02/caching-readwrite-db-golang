@@ -85,6 +85,7 @@ func (c *ProductCommand) Update(ctx context.Context, id uint, input domain.Updat
 	product.Name = input.Name
 	product.Price = input.Price
 	product.Stock = input.Stock
+	product.Status = input.Status
 
 	if userID, ok := auth.GetUserID(ctx); ok {
 		product.UpdatedByUserID = &userID

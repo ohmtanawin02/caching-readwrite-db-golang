@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"golang-fiber/internal/product/domain/entity"
+	"golang-fiber/pkg/constants"
 )
 
 type CreateProductInput struct {
@@ -14,9 +15,10 @@ type CreateProductInput struct {
 }
 
 type UpdateProductInput struct {
-	Name  string
-	Price float64
-	Stock int
+	Name   string
+	Price  float64
+	Stock  int
+	Status constants.ProductStatus
 }
 
 type ProductApplicationCommand interface {

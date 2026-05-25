@@ -14,12 +14,12 @@ import (
 )
 
 type SupplierQuery struct {
-	repo  domain.SupplierRepository
+	repo  domain.SupplierQueryRepository
 	cache *cache.RedisCache
 }
 
 type SupplierQueryCfg struct {
-	Repo  domain.SupplierRepository
+	Repo  domain.SupplierQueryRepository
 	Cache *cache.RedisCache
 }
 

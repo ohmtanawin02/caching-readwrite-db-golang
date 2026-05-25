@@ -12,7 +12,6 @@ import (
 	"golang-fiber/pkg/cache"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
-	"golang-fiber/pkg/database"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -21,12 +20,12 @@ import (
 var ErrDuplicateSupplierName = errors.New("supplier name already exists")
 
 type SupplierCommand struct {
-	repo  domain.SupplierRepository
+	repo  domain.SupplierCommandRepository
 	cache *cache.RedisCache
 }
 
 type SupplierCommandCfg struct {
-	Repo  domain.SupplierRepository
+	Repo  domain.SupplierCommandRepository
 	Cache *cache.RedisCache
 }
 
@@ -40,7 +39,7 @@ func NewSupplierCommand(cfg SupplierCommandCfg) domain.SupplierApplicationComman
 func (c *SupplierCommand) Create(ctx context.Context, input domain.CreateSupplierInput) (*entity.Supplier, error) {
 	log := common.NewAppLogger(ctx, "SupplierCommand.Create")
 
-	if _, err := c.repo.FindByName(database.WithPrimary(ctx), input.Name); err == nil {
+	if _, err := c.repo.FindByName(ctx, input.Name); err == nil {
 		return nil, ErrDuplicateSupplierName
 	} else if !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -62,7 +61,8 @@ func (c *SupplierCommand) Create(ctx context.Context, input domain.CreateSupplie
 
 	go c.invalidateCache(log, "suppliers:list:*")
 
-	return c.repo.FindByID(database.WithPrimary(ctx), supplier.ID)
+	// fetch fresh from writeDB — ได้ created_by/updated_by user ครบ
+	return c.repo.FindByID(ctx, supplier.ID)
 }
 
 func (c *SupplierCommand) Update(ctx context.Context, id uint, input domain.UpdateSupplierInput) (*entity.Supplier, error) {
@@ -73,7 +73,7 @@ func (c *SupplierCommand) Update(ctx context.Context, id uint, input domain.Upda
 		return nil, err
 	}
 
-	if existing, err := c.repo.FindByName(database.WithPrimary(ctx), input.Name); err == nil && existing.ID != id {
+	if existing, err := c.repo.FindByName(ctx, input.Name); err == nil && existing.ID != id {
 		return nil, ErrDuplicateSupplierName
 	} else if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
 		return nil, err
@@ -95,7 +95,8 @@ func (c *SupplierCommand) Update(ctx context.Context, id uint, input domain.Upda
 		"suppliers:list:*",
 	)
 
-	return c.repo.FindByID(database.WithPrimary(ctx), id)
+	// fetch fresh from writeDB — ได้ created_by/updated_by user ครบ
+	return c.repo.FindByID(ctx, id)
 }
 
 func (c *SupplierCommand) SoftDelete(ctx context.Context, id uint) error {

@@ -19,8 +19,12 @@ type FindAllResult struct {
 	Total int64
 }
 
-type SupplierRepository interface {
+type SupplierQueryRepository interface {
 	FindAll(context.Context, FindAllRequest) (FindAllResult, error)
+	FindByID(context.Context, uint) (*entity.Supplier, error)
+}
+
+type SupplierCommandRepository interface {
 	FindByID(context.Context, uint) (*entity.Supplier, error)
 	FindByName(context.Context, string) (*entity.Supplier, error)
 	Create(context.Context, *entity.Supplier) error

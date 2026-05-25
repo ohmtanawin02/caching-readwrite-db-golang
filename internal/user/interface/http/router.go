@@ -24,14 +24,18 @@ type NewUserRouterCfg struct {
 }
 
 func (cfg NewUserRouterCfg) NewUserRouter() {
-	repo := repository.NewUserRepository(repository.UserRepositoryCfg{
-		ReadDB:  cfg.ReadDB,
-		WriteDB: cfg.WriteDB,
-		Logger:  cfg.Logger,
+	queryRepo := repository.NewUserQueryRepository(repository.UserQueryRepositoryCfg{
+		DB:     cfg.ReadDB,
+		Logger: cfg.Logger,
+	})
+	cmdRepo := repository.NewUserCommandRepository(repository.UserCommandRepositoryCfg{
+		DB:     cfg.WriteDB,
+		Logger: cfg.Logger,
 	})
 
 	command := commands.NewUserCommand(commands.UserCommandCfg{
-		Repo:      repo,
+		QueryRepo: queryRepo,
+		CmdRepo:   cmdRepo,
 		JWTSecret: cfg.JWTSecret,
 		JWTTTL:    cfg.JWTTTL,
 	})

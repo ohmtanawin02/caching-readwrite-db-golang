@@ -14,12 +14,12 @@ import (
 )
 
 type ProductQuery struct {
-	repo  domain.ProductRepository
+	repo  domain.ProductQueryRepository
 	cache *cache.RedisCache
 }
 
 type ProductQueryCfg struct {
-	Repo  domain.ProductRepository
+	Repo  domain.ProductQueryRepository
 	Cache *cache.RedisCache
 }
 

@@ -28,14 +28,19 @@ type userRow struct {
 }
 
 func (r *ProductRepository) fetchSupplierMap(ctx context.Context, products []models.Product) (map[uint]supplierRow, error) {
-	ids := make([]uint, 0, len(products))
+	idSet := make(map[uint]struct{})
 	for _, p := range products {
 		if p.SupplierID != nil {
-			ids = append(ids, *p.SupplierID)
+			idSet[*p.SupplierID] = struct{}{}
 		}
 	}
-	if len(ids) == 0 {
+	if len(idSet) == 0 {
 		return nil, nil
+	}
+
+	ids := make([]uint, 0, len(idSet))
+	for id := range idSet {
+		ids = append(ids, id)
 	}
 
 	var rows []supplierRow

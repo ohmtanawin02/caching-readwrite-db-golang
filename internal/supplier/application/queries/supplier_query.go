@@ -5,38 +5,38 @@ import (
 	"errors"
 	"fmt"
 
-	domain "golang-fiber/internal/product/domain"
-	"golang-fiber/internal/product/domain/entity"
+	domain "golang-fiber/internal/supplier/domain"
+	"golang-fiber/internal/supplier/domain/entity"
 	"golang-fiber/pkg/cache"
 	"golang-fiber/pkg/common"
 
 	"github.com/redis/go-redis/v9"
 )
 
-type ProductQuery struct {
-	repo  domain.ProductRepository
+type SupplierQuery struct {
+	repo  domain.SupplierRepository
 	cache *cache.RedisCache
 }
 
-type ProductQueryCfg struct {
-	Repo  domain.ProductRepository
+type SupplierQueryCfg struct {
+	Repo  domain.SupplierRepository
 	Cache *cache.RedisCache
 }
 
-func NewProductQuery(cfg ProductQueryCfg) domain.ProductApplicationQuery {
-	return &ProductQuery{
+func NewSupplierQuery(cfg SupplierQueryCfg) domain.SupplierApplicationQuery {
+	return &SupplierQuery{
 		repo:  cfg.Repo,
 		cache: cfg.Cache,
 	}
 }
 
 func cacheKeyList(req domain.FindAllRequest) string {
-	return fmt.Sprintf("products:list:supplier:%d:page:%d:limit:%d:sort:%s:%s",
-		req.SupplierID, req.Page, req.Limit, req.SortBy, req.SortOrder)
+	return fmt.Sprintf("suppliers:list:page:%d:limit:%d:sort:%s:%s",
+		req.Page, req.Limit, req.SortBy, req.SortOrder)
 }
 
-func (q *ProductQuery) FindAll(ctx context.Context, req domain.FindAllRequest) (domain.FindAllResult, error) {
-	log := common.NewAppLogger(ctx, "ProductQuery.FindAll")
+func (q *SupplierQuery) FindAll(ctx context.Context, req domain.FindAllRequest) (domain.FindAllResult, error) {
+	log := common.NewAppLogger(ctx, "SupplierQuery.FindAll")
 	key := cacheKeyList(req)
 
 	var cached domain.FindAllResult
@@ -62,11 +62,11 @@ func (q *ProductQuery) FindAll(ctx context.Context, req domain.FindAllRequest) (
 	return result, nil
 }
 
-func (q *ProductQuery) FindByID(ctx context.Context, id uint) (*entity.Product, error) {
-	log := common.NewAppLogger(ctx, "ProductQuery.FindByID")
-	key := fmt.Sprintf("products:detail:%d", id)
+func (q *SupplierQuery) FindByID(ctx context.Context, id uint) (*entity.Supplier, error) {
+	log := common.NewAppLogger(ctx, "SupplierQuery.FindByID")
+	key := fmt.Sprintf("suppliers:detail:%d", id)
 
-	var cached entity.Product
+	var cached entity.Supplier
 	if err := q.cache.Get(ctx, key, &cached); err == nil {
 		log.Debug().Str("key", key).Msg("cache hit")
 		return &cached, nil
@@ -74,17 +74,17 @@ func (q *ProductQuery) FindByID(ctx context.Context, id uint) (*entity.Product, 
 		log.Warn().Err(err).Msg("redis error, fallthrough to db")
 	}
 
-	product, err := q.repo.FindByID(ctx, id)
+	supplier, err := q.repo.FindByID(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	snapshot := *product
+	snapshot := *supplier
 	go func() {
 		if err := q.cache.Set(context.Background(), key, snapshot, cache.DefaultTTL); err != nil {
 			log.Warn().Err(err).Msg("failed to set cache")
 		}
 	}()
 
-	return product, nil
+	return supplier, nil
 }

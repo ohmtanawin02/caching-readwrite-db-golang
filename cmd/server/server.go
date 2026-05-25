@@ -17,6 +17,7 @@ import (
 	"golang-fiber/config"
 	_ "golang-fiber/docs"
 	productRouter "golang-fiber/internal/product/interface/http"
+	supplierRouter "golang-fiber/internal/supplier/interface/http"
 	userRouter "golang-fiber/internal/user/interface/http"
 	"golang-fiber/pkg/common"
 	"golang-fiber/pkg/constants"
@@ -67,10 +68,16 @@ func NewServer(cfg *config.Config) *fiber.App {
 	app.Get("/swagger/*", fiberSwagger.HandlerDefault)
 
 	app.Get("/health", func(c *fiber.Ctx) error {
-		sqlDB, _ := readDB.DB()
-		if err := sqlDB.Ping(); err != nil {
+		readSQLDB, _ := readDB.DB()
+		if err := readSQLDB.Ping(); err != nil {
 			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
-				"status": "unhealthy", "db": err.Error(),
+				"status": "unhealthy", "read_db": err.Error(),
+			})
+		}
+		writeSQLDB, _ := writeDB.DB()
+		if err := writeSQLDB.Ping(); err != nil {
+			return c.Status(fiber.StatusServiceUnavailable).JSON(fiber.Map{
+				"status": "unhealthy", "write_db": err.Error(),
 			})
 		}
 		if err := rdb.Ping(c.UserContext()).Err(); err != nil {
@@ -108,6 +115,15 @@ func NewServer(cfg *config.Config) *fiber.App {
 		Logger:   logger,
 		Validate: validate,
 	}.NewProductRouter()
+
+	supplierRouter.NewSupplierRouterCfg{
+		App:      api,
+		ReadDB:   readDB,
+		WriteDB:  writeDB,
+		Redis:    rdb,
+		Logger:   logger,
+		Validate: validate,
+	}.NewSupplierRouter()
 
 	app.Use(func(c *fiber.Ctx) error {
 		return common.ResponseJsonWithCode(c, fiber.StatusNotFound, uuid.New(),

@@ -8,6 +8,7 @@ import (
 	"golang-fiber/internal/product/domain/entity"
 	"golang-fiber/internal/product/infrastructure/repository/models"
 	"golang-fiber/pkg/common"
+	"golang-fiber/pkg/database"
 
 	"github.com/rs/zerolog"
 	"gorm.io/gorm"
@@ -78,8 +79,13 @@ func (r *ProductRepository) FindAll(ctx context.Context, req domain.FindAllReque
 func (r *ProductRepository) FindByID(ctx context.Context, id uint) (*entity.Product, error) {
 	log := common.NewRepoLogger(ctx, "ProductRepository.FindByID")
 
+	db := r.readDB
+	if database.UsePrimary(ctx) {
+		db = r.writeDB
+	}
+
 	var result models.Product
-	if err := r.readDB.WithContext(ctx).First(&result, id).Error; err != nil {
+	if err := db.WithContext(ctx).First(&result, id).Error; err != nil {
 		log.Error().Err(err).Uint("id", id).Msg("failed to find product")
 		return nil, err
 	}
@@ -103,8 +109,13 @@ func (r *ProductRepository) FindByID(ctx context.Context, id uint) (*entity.Prod
 func (r *ProductRepository) FindByName(ctx context.Context, name string) (*entity.Product, error) {
 	log := common.NewRepoLogger(ctx, "ProductRepository.FindByName")
 
+	db := r.readDB
+	if database.UsePrimary(ctx) {
+		db = r.writeDB
+	}
+
 	var result models.Product
-	if err := r.readDB.WithContext(ctx).Where("name = ?", name).First(&result).Error; err != nil {
+	if err := db.WithContext(ctx).Where("name = ?", name).First(&result).Error; err != nil {
 		return nil, err
 	}
 
@@ -157,15 +168,4 @@ func (r *ProductRepository) Delete(ctx context.Context, id uint) error {
 		return err
 	}
 	return nil
-}
-
-func (r *ProductRepository) Transact(ctx context.Context, fn func(domain.ProductRepository) error) error {
-	return r.writeDB.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
-		txRepo := &ProductRepository{
-			readDB:  r.readDB,
-			writeDB: tx,
-			logger:  r.logger,
-		}
-		return fn(txRepo)
-	})
 }

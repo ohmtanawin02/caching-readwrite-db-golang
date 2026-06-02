@@ -23,7 +23,7 @@ services:
 
     volumes:
       - postgres_primary_data:/bitnami/postgresql          # เก็บ data ถาวรใน docker volume
-      - ./migrations/schema:/docker-entrypoint-initdb.d    # SQL ใน folder นี้จะ run อัตโนมัติตอน container สร้างครั้งแรก
+      # ไม่ mount migrations เข้า initdb แล้ว — schema จัดการผ่าน golang-migrate เอง (ดู Makefile)
 
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d product_db"]  # เช็คว่า postgres พร้อมรับ connection
